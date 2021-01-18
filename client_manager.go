@@ -32,8 +32,9 @@ type ClientManager struct {
 	cryptoEntries        []*encryptionEntry
 	numCryptoEntries     int
 
-	emptyMac      []byte // used to ensure empty mac (all empty bytes) doesn't match
-	emptyWriteKey []byte // used to test for empty write key
+	emptyMac           []byte // used to ensure empty mac (all empty bytes) doesn't match
+	emptyWriteKey      []byte // used to test for empty write key
+	disconnectCallback func(int)
 }
 
 func NewClientManager(timeout float64, maxClients int) *ClientManager {
@@ -139,6 +140,10 @@ func (m *ClientManager) ConnectClient(addr *net.UDPAddr, challengeToken *Challen
 	client.address = addr
 	copy(client.userData, challengeToken.UserData.Bytes())
 	return client
+}
+
+func (m *ClientManager) setTimeoutHandler(timeoutHandlerFn func(int)) {
+	m.disconnectCallback = timeoutHandlerFn
 }
 
 // Disconnects the client referenced by the provided clientIndex.
@@ -445,6 +450,7 @@ func (m *ClientManager) disconnectClient(client *ClientInstance, sendDisconnect 
 	}
 	log.Printf("removing encryption entry for: %s", client.address.String())
 	m.RemoveEncryptionEntry(client.address, serverTime)
+	m.disconnectCallback(client.clientIndex)
 	client.Clear()
 }
 

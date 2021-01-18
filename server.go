@@ -34,8 +34,9 @@ type Server struct {
 
 	challengeSequence uint64
 
-	recvBytes int
-	packetCh  chan *NetcodeData
+	recvBytes             int
+	packetCh              chan *NetcodeData
+	clientTimeoutCallback func(int)
 }
 
 func NewServer(serverAddress *net.UDPAddr, privateKey []byte, protocolId uint64, maxClients int) *Server {
@@ -61,6 +62,9 @@ func NewServer(serverAddress *net.UDPAddr, privateKey []byte, protocolId uint64,
 	return s
 }
 
+func (s *Server) SetTimeoutCallback(timeoutCallback func(int)) {
+	s.clientTimeoutCallback = timeoutCallback
+}
 func (s *Server) SetAllowedPackets(allowedPackets []byte) {
 	s.allowedPackets = allowedPackets
 }
@@ -100,6 +104,7 @@ func (s *Server) Init() error {
 	s.serverConn.SetReadBuffer(SOCKET_RCVBUF_SIZE * s.maxClients)
 	s.serverConn.SetWriteBuffer(SOCKET_SNDBUF_SIZE * s.maxClients)
 	s.serverConn.SetRecvHandler(s.handleNetcodeData)
+	s.clientManager.setTimeoutHandler(s.timeoutClient)
 	return nil
 }
 
@@ -131,6 +136,12 @@ func (s *Server) SendPayloadToClient(clientId uint64, payloadData []byte) error 
 		return err
 	}
 
+	s.clientManager.sendPayloadToInstance(clientIndex, payloadData, s.serverTime)
+	return nil
+}
+
+// Sends the payload to the client specified by their clientId.
+func (s *Server) SendPayloadToClientIndex(clientIndex int, payloadData []byte) error {
 	s.clientManager.sendPayloadToInstance(clientIndex, payloadData, s.serverTime)
 	return nil
 }
@@ -189,6 +200,10 @@ func (s *Server) handleNetcodeData(packetData *NetcodeData) {
 	s.packetCh <- packetData
 }
 
+func (s *Server) timeoutClient(clientID int) {
+	s.clientTimeoutCallback(clientID)
+}
+
 func (s *Server) OnPacketData(packetData []byte, addr *net.UDPAddr) {
 	var readPacketKey []byte
 	var replayProtection *ReplayProtection
@@ -207,7 +222,6 @@ func (s *Server) OnPacketData(packetData []byte, addr *net.UDPAddr) {
 		encryptionIndex = s.clientManager.FindEncryptionEntryIndex(addr, s.serverTime)
 	}
 	readPacketKey = s.clientManager.GetEncryptionEntryRecvKey(encryptionIndex)
-
 	timestamp := uint64(time.Now().Unix())
 
 	packet := NewPacket(packetData)
@@ -279,7 +293,7 @@ func (s *Server) processConnectionRequest(packet Packet, addr *net.UDPAddr) {
 	}
 
 	if len(requestPacket.Token.ServerAddrs) == 0 {
-		log.Printf("server ignored connection request. server address not in connect token whitelist\n")
+		log.Printf("server ignored connection request. no server address present in connect token whitelist\n")
 		return
 	}
 
