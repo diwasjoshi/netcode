@@ -138,6 +138,7 @@ func (m *ClientManager) ConnectClient(addr *net.UDPAddr, challengeToken *Challen
 	client.sequence = 0
 	client.clientId = challengeToken.ClientId
 	client.address = addr
+	client.addressString = addr.IP.String()
 	copy(client.userData, challengeToken.UserData.Bytes())
 	return client
 }
@@ -154,11 +155,15 @@ func (m *ClientManager) DisconnectClient(clientIndex int, sendDisconnect bool, s
 
 // Finds the client index referenced by the provided UDPAddr.
 func (m *ClientManager) FindClientIndexByAddress(addr *net.UDPAddr) int {
+	addrString := addr.IP.String()
 	for i := 0; i < m.maxClients; i += 1 {
 		instance := m.instances[i]
-		if instance.address != nil && instance.connected && addressEqual(instance.address, addr) {
+		if instance.address != nil && instance.connected && addrString == instance.addressString && addr.Port == instance.address.Port{
 			return i
 		}
+		//if instance.address != nil && instance.connected && addressEqual(instance.address, addr) {
+		//	return i
+		//}
 	}
 	return -1
 }
