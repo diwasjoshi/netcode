@@ -158,7 +158,8 @@ func (m *ClientManager) FindClientIndexByAddress(addr *net.UDPAddr) int {
 	addrString := addr.IP.String()
 	for i := 0; i < m.maxClients; i += 1 {
 		instance := m.instances[i]
-		if instance.address != nil && instance.connected && addrString == instance.addressString && addr.Port == instance.address.Port{
+		if instance.address != nil && instance.connected && len(addrString) == len(instance.addressString) &&
+			addrString == instance.addressString && addr.Port == instance.address.Port{
 			return i
 		}
 		//if instance.address != nil && instance.connected && addressEqual(instance.address, addr) {
