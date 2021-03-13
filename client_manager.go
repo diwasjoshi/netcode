@@ -155,7 +155,7 @@ func (m *ClientManager) DisconnectClient(clientIndex int, sendDisconnect bool, s
 
 // Finds the client index referenced by the provided UDPAddr.
 func (m *ClientManager) FindClientIndexByAddress(addr *net.UDPAddr) int {
-	addrString := addr.String()
+	addrString := addr.IP.String()
 	for i := 0; i < m.maxClients; i += 1 {
 		instance := m.instances[i]
 		if instance.address != nil && instance.connected && addrString == instance.addressString && addr.Port == instance.address.Port{
