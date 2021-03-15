@@ -2,8 +2,9 @@ package netcode
 
 import (
 	"bytes"
-	"net"
 	"testing"
+
+	"inet.af/netaddr"
 )
 
 func TestReadWriteShared(t *testing.T) {
@@ -28,10 +29,15 @@ func readWriteShared(t *testing.T, addr string) {
 		t.Fatalf("error generating server key")
 	}
 
-	server := net.UDPAddr{IP: net.ParseIP(addr), Port: 40000}
+	ip, err := netaddr.ParseIP(addr)
+	if err != nil {
+		t.Fatalf(("error parsing ip"))
+	}
+
+	server := netaddr.IPPort{IP: ip, Port: 40000}
 	data := &sharedTokenData{}
 	data.TimeoutSeconds = 10
-	data.ServerAddrs = make([]net.UDPAddr, 1)
+	data.ServerAddrs = make([]netaddr.IPPort, 1)
 	data.ServerAddrs[0] = server
 	data.ClientKey = clientKey
 	data.ServerKey = serverKey
@@ -61,7 +67,7 @@ func readWriteShared(t *testing.T, addr string) {
 		t.Fatalf("server key did not match")
 	}
 
-	if !outData.ServerAddrs[0].IP.Equal(server.IP) {
+	if outData.ServerAddrs[0].IP != server.IP {
 		t.Fatalf("server address did not match\nexpected: %s\ngot: %s\n", server.IP, outData.ServerAddrs[0].IP)
 	}
 }

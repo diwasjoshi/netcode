@@ -3,9 +3,10 @@ package netcode
 import (
 	"fmt"
 	"log"
-	"net"
 	"sync/atomic"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 const TIMEOUT_SECONDS = 5 // default timeout for clients
@@ -13,7 +14,7 @@ const MAX_SERVER_PACKETS = 64
 
 type Server struct {
 	serverConn       *NetcodeConn
-	serverAddr       *net.UDPAddr
+	serverAddr       *netaddr.IPPort
 	shutdownCh       chan struct{}
 	serverTime       float64
 	running          bool
@@ -39,7 +40,7 @@ type Server struct {
 	clientTimeoutCallback func(int)
 }
 
-func NewServer(serverAddress *net.UDPAddr, privateKey []byte, protocolId uint64, maxClients int) *Server {
+func NewServer(serverAddress *netaddr.IPPort, privateKey []byte, protocolId uint64, maxClients int) *Server {
 	s := &Server{}
 	s.serverAddr = serverAddress
 	s.protocolId = protocolId
@@ -111,12 +112,7 @@ func (s *Server) Init() error {
 func (s *Server) Listen() error {
 	s.running = true
 
-	addr := &net.UDPAddr{
-		Port: s.serverAddr.Port,
-		IP:   net.ParseIP("0.0.0.0"),
-	}
-
-	if err := s.serverConn.Listen(addr); err != nil {
+	if err := s.serverConn.Listen(s.serverAddr); err != nil {
 		return err
 	}
 	return nil
@@ -204,7 +200,7 @@ func (s *Server) timeoutClient(clientID int) {
 	s.clientTimeoutCallback(clientID)
 }
 
-func (s *Server) OnPacketData(packetData []byte, addr *net.UDPAddr) {
+func (s *Server) OnPacketData(packetData []byte, addr *netaddr.IPPort) {
 	var readPacketKey []byte
 	var replayProtection *ReplayProtection
 
@@ -238,7 +234,7 @@ func (s *Server) OnPacketData(packetData []byte, addr *net.UDPAddr) {
 	s.processPacket(clientIndex, encryptionIndex, packet, addr)
 }
 
-func (s *Server) processPacket(clientIndex, encryptionIndex int, packet Packet, addr *net.UDPAddr) {
+func (s *Server) processPacket(clientIndex, encryptionIndex int, packet Packet, addr *netaddr.IPPort) {
 	switch packet.GetType() {
 	case ConnectionRequest:
 		if s.ignoreRequests {
@@ -286,7 +282,7 @@ func (s *Server) processPacket(clientIndex, encryptionIndex int, packet Packet, 
 	}
 }
 
-func (s *Server) processConnectionRequest(packet Packet, addr *net.UDPAddr) {
+func (s *Server) processConnectionRequest(packet Packet, addr *netaddr.IPPort) {
 	requestPacket, ok := packet.(*RequestPacket)
 	if !ok {
 		return
@@ -341,7 +337,7 @@ func (s *Server) processConnectionRequest(packet Packet, addr *net.UDPAddr) {
 	s.sendChallengePacket(requestPacket, addr)
 }
 
-func (s *Server) sendChallengePacket(requestPacket *RequestPacket, addr *net.UDPAddr) {
+func (s *Server) sendChallengePacket(requestPacket *RequestPacket, addr *netaddr.IPPort) {
 	var bytesWritten int
 	var err error
 
@@ -367,13 +363,13 @@ func (s *Server) sendChallengePacket(requestPacket *RequestPacket, addr *net.UDP
 	s.sendGlobalPacket(buffer[:bytesWritten], addr)
 }
 
-func (s *Server) sendGlobalPacket(packetBuffer []byte, addr *net.UDPAddr) {
+func (s *Server) sendGlobalPacket(packetBuffer []byte, addr *netaddr.IPPort) {
 	if _, err := s.serverConn.WriteTo(packetBuffer, addr); err != nil {
 		log.Printf("error sending packet to %s\n", addr.String())
 	}
 }
 
-func (s *Server) processConnectionResponse(clientIndex, encryptionIndex int, packet Packet, addr *net.UDPAddr) {
+func (s *Server) processConnectionResponse(clientIndex, encryptionIndex int, packet Packet, addr *netaddr.IPPort) {
 	var err error
 	var tokenBuffer []byte
 	var challengeToken *ChallengeToken
@@ -420,7 +416,7 @@ func (s *Server) processConnectionResponse(clientIndex, encryptionIndex int, pac
 
 }
 
-func (s *Server) sendDeniedPacket(sendKey []byte, addr *net.UDPAddr) {
+func (s *Server) sendDeniedPacket(sendKey []byte, addr *netaddr.IPPort) {
 	var bytesWritten int
 	var err error
 
@@ -434,7 +430,7 @@ func (s *Server) sendDeniedPacket(sendKey []byte, addr *net.UDPAddr) {
 	s.sendGlobalPacket(packetBuffer[:bytesWritten], addr)
 }
 
-func (s *Server) connectClient(encryptionIndex int, challengeToken *ChallengeToken, addr *net.UDPAddr) {
+func (s *Server) connectClient(encryptionIndex int, challengeToken *ChallengeToken, addr *netaddr.IPPort) {
 	if s.clientManager.ConnectedClientCount() > s.maxClients {
 		log.Printf("maxium number of clients reached")
 		return
@@ -531,9 +527,9 @@ func (s *Server) RecvPayload(clientIndex int) ([]byte, uint64) {
 	return p.PayloadData, p.sequence
 }
 
-func addressEqual(addr1, addr2 *net.UDPAddr) bool {
+func addressEqual(addr1, addr2 *netaddr.IPPort) bool {
 	if addr1 == nil || addr2 == nil {
 		return false
 	}
-	return addr1.IP.Equal(addr2.IP) && addr1.Port == addr2.Port
+	return addr1 == addr2
 }

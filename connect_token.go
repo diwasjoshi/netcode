@@ -2,9 +2,10 @@ package netcode
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 // number of bytes for connect tokens
@@ -30,7 +31,7 @@ func NewConnectToken() *ConnectToken {
 
 // Generates the token and private token data with the supplied config values and sequence id.
 // This will also write and encrypt the private token
-func (token *ConnectToken) Generate(clientId uint64, serverAddrs []net.UDPAddr, versionInfo string, protocolId uint64, expireSeconds uint64, timeoutSeconds int32, sequence uint64, userData, privateKey []byte) error {
+func (token *ConnectToken) Generate(clientId uint64, serverAddrs []netaddr.IPPort, versionInfo string, protocolId uint64, expireSeconds uint64, timeoutSeconds int32, sequence uint64, userData, privateKey []byte) error {
 	token.CreateTimestamp = uint64(time.Now().Unix())
 	if expireSeconds >= 0 {
 		token.ExpireTimestamp = token.CreateTimestamp + expireSeconds

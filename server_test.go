@@ -1,9 +1,10 @@
 package netcode
 
 import (
-	"net"
 	"testing"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 type SendFunc func(serv *Server, payload []byte)
@@ -43,7 +44,8 @@ func testSendToClientFunc(serv *Server, payload []byte) {
 
 func runTestServer(port int, sendFunc SendFunc, doneCh chan struct{}, t *testing.T) {
 	maxClients := 32
-	addr := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: port}
+	ip, _ := netaddr.ParseIP("127.0.0.1")
+	addr := netaddr.IPPort{IP: ip, Port: uint16(port)}
 	serv := NewServer(&addr, TEST_PRIVATE_KEY, TEST_PROTOCOL_ID, maxClients)
 	if err := serv.Init(); err != nil {
 		t.Fatalf("error initializing server: %s\n", err)
@@ -94,8 +96,9 @@ func runTestServer(port int, sendFunc SendFunc, doneCh chan struct{}, t *testing
 }
 
 func runTestClient(port int, t *testing.T) {
-	server := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: port}
-	servers := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("127.0.0.1")
+	server := netaddr.IPPort{IP: ip, Port: uint16(port)}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)

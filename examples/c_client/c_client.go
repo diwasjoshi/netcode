@@ -4,12 +4,12 @@ import (
 	"flag"
 	"log"
 	"math/rand"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wirepair/netcode"
+	"inet.af/netaddr"
 )
 
 const (
@@ -106,8 +106,9 @@ func clientLoop(wg *sync.WaitGroup, connectToken *netcode.ConnectToken) {
 }
 
 func getConnectToken(clientId uint64) *netcode.ConnectToken {
-	server := net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
-	servers := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("::1")
+	server := netaddr.IPPort{IP: ip, Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 
 	privateKey := PRIVATE_KEY

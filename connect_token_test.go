@@ -2,8 +2,9 @@ package netcode
 
 import (
 	"bytes"
-	"net"
 	"testing"
+
+	"inet.af/netaddr"
 )
 
 const (
@@ -86,7 +87,7 @@ func TestConnectToken(t *testing.T) {
 	testComparePrivateTokens(inToken.PrivateData, outToken.PrivateData, t)
 }
 
-func testGenerateConnectToken(servers []net.UDPAddr, privateKey []byte, t *testing.T) *ConnectToken {
+func testGenerateConnectToken(servers []netaddr.IPPort, privateKey []byte, t *testing.T) *ConnectToken {
 	if privateKey == nil {
 		privateKey = TEST_PRIVATE_KEY
 	}
@@ -104,9 +105,10 @@ func testGenerateConnectToken(servers []net.UDPAddr, privateKey []byte, t *testi
 	return connectToken
 }
 
-func testServers() []net.UDPAddr {
-	server := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	servers := make([]net.UDPAddr, 1)
+func testServers() []netaddr.IPPort {
+	ip, _ := netaddr.ParseIP(("127.0.0.1"))
+	server := netaddr.IPPort{IP: ip, Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 	return servers
 }

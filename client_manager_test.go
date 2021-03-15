@@ -1,8 +1,9 @@
 package netcode
 
 import (
-	"net"
 	"testing"
+
+	"inet.af/netaddr"
 )
 
 func TestNewClientManager(t *testing.T) {
@@ -14,7 +15,7 @@ func TestNewClientManager(t *testing.T) {
 		t.Fatalf("free client index should not return -1 when empty")
 	}
 
-	addr := &net.UDPAddr{}
+	addr := &netaddr.IPPort{}
 	if cm.FindClientIndexByAddress(addr) != -1 {
 		t.Fatalf("client index by empty address should return -1")
 	}
@@ -28,14 +29,16 @@ func TestNewClientManager(t *testing.T) {
 func TestAddEncryptionMapping(t *testing.T) {
 	timeout := float64(4)
 	maxClients := 2
-	servers := make([]net.UDPAddr, 1)
-	servers[0] = net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 
-	addr := &net.UDPAddr{IP: net.ParseIP("::1"), Port: 62424}
-	addr2 := &net.UDPAddr{IP: net.ParseIP("::1"), Port: 62425}
-	overAddrs := make([]*net.UDPAddr, (maxClients)*8)
+	ip, _ := netaddr.ParseIP("::1")
+	servers[0] = netaddr.IPPort{IP: ip, Port: 40000}
+
+	addr := &netaddr.IPPort{IP: ip, Port: 62424}
+	addr2 := &netaddr.IPPort{IP: ip, Port: 62425}
+	overAddrs := make([]*netaddr.IPPort, (maxClients)*8)
 	for i := 0; i < len(overAddrs); i++ {
-		overAddrs[i] = &net.UDPAddr{IP: net.ParseIP("::1"), Port: 6000 + i}
+		overAddrs[i] = &netaddr.IPPort{IP: ip, Port: uint16(6000 + i)}
 	}
 
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)
@@ -72,10 +75,11 @@ func TestAddEncryptionMapping(t *testing.T) {
 func TestAddEncryptionMappingTimeout(t *testing.T) {
 	timeout := float64(4)
 	maxClients := 2
-	servers := make([]net.UDPAddr, 1)
-	servers[0] = net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
+	ip, _ := netaddr.ParseIP(("::1"))
+	servers[0] = netaddr.IPPort{IP: ip, Port: 40000}
 
-	addr := &net.UDPAddr{IP: net.ParseIP("::1"), Port: 62424}
+	addr := &netaddr.IPPort{IP: ip, Port: 62424}
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)
 
 	cm := NewClientManager(timeout, maxClients)
@@ -108,10 +112,11 @@ func TestAddEncryptionMappingTimeout(t *testing.T) {
 func TestDisconnectClient(t *testing.T) {
 	timeout := float64(4)
 	maxClients := 2
-	servers := make([]net.UDPAddr, 1)
-	servers[0] = net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
+	ip, _ := netaddr.ParseIP("::1")
+	servers[0] = netaddr.IPPort{IP: ip, Port: 40000}
 
-	addr := &net.UDPAddr{IP: net.ParseIP("::1"), Port: 62424}
+	addr := &netaddr.IPPort{IP: ip, Port: 62424}
 
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)
 

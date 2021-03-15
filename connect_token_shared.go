@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+
+	"inet.af/netaddr"
 )
 
 // ip types used in serialization of server addresses
@@ -16,10 +18,10 @@ const (
 // This struct contains data that is shared in both public and private parts of the
 // connect token.
 type sharedTokenData struct {
-	TimeoutSeconds int32         // timeout in seconds. -1 means disable timeout (dev only).
-	ServerAddrs    []net.UDPAddr // list of server addresses this client may connect to
-	ClientKey      []byte        // client to server key
-	ServerKey      []byte        // server to client key
+	TimeoutSeconds int32            // timeout in seconds. -1 means disable timeout (dev only).
+	ServerAddrs    []netaddr.IPPort // list of server addresses this client may connect to
+	ClientKey      []byte           // client to server key
+	ServerKey      []byte           // server to client key
 }
 
 func (shared *sharedTokenData) GenerateShared() error {
@@ -59,7 +61,7 @@ func (shared *sharedTokenData) ReadShared(buffer *Buffer) error {
 		return ErrTooManyServers
 	}
 
-	shared.ServerAddrs = make([]net.UDPAddr, servers)
+	shared.ServerAddrs = make([]netaddr.IPPort, servers)
 
 	for i := 0; i < int(servers); i += 1 {
 		serverType, err := buffer.GetUint8()
@@ -87,13 +89,16 @@ func (shared *sharedTokenData) ReadShared(buffer *Buffer) error {
 			return ErrUnknownIPAddress
 		}
 
-		ip := net.IP(ipBytes)
+		ip, err := netaddr.ParseIP(string(ipBytes))
+		if err != nil {
+			return ErrUnknownIPAddress
+		}
 
 		port, err := buffer.GetUint16()
 		if err != nil {
 			return ErrInvalidPort
 		}
-		shared.ServerAddrs[i] = net.UDPAddr{IP: ip, Port: int(port)}
+		shared.ServerAddrs[i] = netaddr.IPPort{IP: ip, Port: port}
 	}
 
 	if shared.ClientKey, err = buffer.GetBytes(KEY_BYTES); err != nil {

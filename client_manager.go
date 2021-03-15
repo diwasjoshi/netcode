@@ -3,12 +3,13 @@ package netcode
 import (
 	"bytes"
 	"log"
-	"net"
+
+	"inet.af/netaddr"
 )
 
 type connectTokenEntry struct {
 	mac     []byte
-	address *net.UDPAddr
+	address *netaddr.IPPort
 	time    float64
 }
 
@@ -16,7 +17,7 @@ type encryptionEntry struct {
 	expireTime float64
 	lastAccess float64
 	timeout    int
-	address    *net.UDPAddr
+	address    *netaddr.IPPort
 	sendKey    []byte
 	recvKey    []byte
 }
@@ -27,6 +28,7 @@ type ClientManager struct {
 	timeout    float64
 
 	instances            []*ClientInstance
+	activeInstances      map[netaddr.IPPort]*ClientInstance
 	connectedClientIds   []uint64 // slice of connected clientIds
 	connectTokensEntries []*connectTokenEntry
 	cryptoEntries        []*encryptionEntry
@@ -56,6 +58,7 @@ func (m *ClientManager) setTimeout(timeout float64) {
 }
 
 func (m *ClientManager) resetClientInstances() {
+	m.activeInstances = make(map[netaddr.IPPort]*ClientInstance, m.maxClients)
 	m.instances = make([]*ClientInstance, m.maxClients)
 	for i := 0; i < m.maxClients; i += 1 {
 		instance := NewClientInstance()
@@ -111,8 +114,7 @@ func (m *ClientManager) FindFreeClientIndex() int {
 // many we were able to add.
 func (m *ClientManager) ConnectedClients() []uint64 {
 	i := 0
-	for clientIndex := 0; clientIndex < m.maxClients; clientIndex += 1 {
-		client := m.instances[clientIndex]
+	for _, client := range m.activeInstances {
 		if client.connected && client.address != nil {
 			m.connectedClientIds[i] = client.clientId
 			i++
@@ -126,7 +128,7 @@ func (m *ClientManager) ConnectedClientCount() int {
 }
 
 // Initializes the client with the clientId
-func (m *ClientManager) ConnectClient(addr *net.UDPAddr, challengeToken *ChallengeToken) *ClientInstance {
+func (m *ClientManager) ConnectClient(addr *netaddr.IPPort, challengeToken *ChallengeToken) *ClientInstance {
 	clientIndex := m.FindFreeClientIndex()
 	if clientIndex == -1 {
 		log.Printf("failure to find free client index\n")
@@ -138,6 +140,7 @@ func (m *ClientManager) ConnectClient(addr *net.UDPAddr, challengeToken *Challen
 	client.sequence = 0
 	client.clientId = challengeToken.ClientId
 	client.address = addr
+	m.activeInstances[*addr] = client
 	copy(client.userData, challengeToken.UserData.Bytes())
 	return client
 }
@@ -153,22 +156,20 @@ func (m *ClientManager) DisconnectClient(clientIndex int, sendDisconnect bool, s
 }
 
 // Finds the client index referenced by the provided UDPAddr.
-func (m *ClientManager) FindClientIndexByAddress(addr *net.UDPAddr) int {
-	for i := 0; i < m.maxClients; i += 1 {
-		instance := m.instances[i]
-		if instance.address != nil && instance.connected && addressEqual(instance.address, addr) {
-			return i
-		}
+func (m *ClientManager) FindClientIndexByAddress(addr *netaddr.IPPort) int {
+	instance, ok := m.activeInstances[*addr]
+	if !ok {
+		return -1
 	}
-	return -1
+
+	return instance.clientIndex
 }
 
 // Finds the client index via the provided clientId.
 func (m *ClientManager) FindClientIndexById(clientId uint64) int {
-	for i := 0; i < m.maxClients; i += 1 {
-		instance := m.instances[i]
+	for _, instance := range m.activeInstances {
 		if instance.address != nil && instance.connected && instance.clientId == clientId {
-			return i
+			return instance.clientIndex
 		}
 	}
 	return -1
@@ -184,7 +185,7 @@ func (m *ClientManager) FindEncryptionIndexByClientIndex(clientIndex int) int {
 }
 
 // Finds an encryption entry index via the provided UDPAddr.
-func (m *ClientManager) FindEncryptionEntryIndex(addr *net.UDPAddr, serverTime float64) int {
+func (m *ClientManager) FindEncryptionEntryIndex(addr *netaddr.IPPort, serverTime float64) int {
 	for i := 0; i < m.numCryptoEntries; i += 1 {
 		entry := m.cryptoEntries[i]
 		if entry == nil || entry.address == nil {
@@ -201,7 +202,7 @@ func (m *ClientManager) FindEncryptionEntryIndex(addr *net.UDPAddr, serverTime f
 }
 
 // Finds or adds a token entry to our token entry slice.
-func (m *ClientManager) FindOrAddTokenEntry(connectTokenMac []byte, addr *net.UDPAddr, serverTime float64) bool {
+func (m *ClientManager) FindOrAddTokenEntry(connectTokenMac []byte, addr *netaddr.IPPort, serverTime float64) bool {
 	var oldestTime float64
 
 	tokenIndex := -1
@@ -241,7 +242,7 @@ func (m *ClientManager) FindOrAddTokenEntry(connectTokenMac []byte, addr *net.UD
 }
 
 // Adds a new encryption mapping of client/server keys.
-func (m *ClientManager) AddEncryptionMapping(connectToken *ConnectTokenPrivate, addr *net.UDPAddr, serverTime, expireTime float64) bool {
+func (m *ClientManager) AddEncryptionMapping(connectToken *ConnectTokenPrivate, addr *netaddr.IPPort, serverTime, expireTime float64) bool {
 	// already list
 	for i := 0; i < m.maxEntries; i += 1 {
 		entry := m.cryptoEntries[i]
@@ -277,7 +278,7 @@ func (m *ClientManager) AddEncryptionMapping(connectToken *ConnectTokenPrivate, 
 }
 
 // Update the encryption entry for the  provided encryption index.
-func (m *ClientManager) TouchEncryptionEntry(encryptionIndex int, addr *net.UDPAddr, serverTime float64) bool {
+func (m *ClientManager) TouchEncryptionEntry(encryptionIndex int, addr *netaddr.IPPort, serverTime float64) bool {
 	if encryptionIndex < 0 || encryptionIndex > m.numCryptoEntries {
 		return false
 	}
@@ -301,7 +302,7 @@ func (m *ClientManager) SetEncryptionEntryExpiration(encryptionIndex int, expire
 }
 
 // Removes the encryption entry for this UDPAddr.
-func (m *ClientManager) RemoveEncryptionEntry(addr *net.UDPAddr, serverTime float64) bool {
+func (m *ClientManager) RemoveEncryptionEntry(addr *netaddr.IPPort, serverTime float64) bool {
 	for i := 0; i < m.numCryptoEntries; i += 1 {
 		entry := m.cryptoEntries[i]
 		if !addressEqual(entry.address, addr) {
@@ -351,8 +352,8 @@ func (m *ClientManager) getEncryptionEntryKey(index int, sendKey bool) []byte {
 }
 
 func (m *ClientManager) sendPayloads(payloadData []byte, serverTime float64) {
-	for i := 0; i < m.maxClients; i += 1 {
-		m.sendPayloadToInstance(i, payloadData, serverTime)
+	for _, instance := range m.activeInstances {
+		m.sendPayloadToInstance(instance.clientIndex, payloadData, serverTime)
 	}
 }
 
@@ -386,8 +387,7 @@ func (m *ClientManager) sendPayloadToInstance(index int, payloadData []byte, ser
 
 // Send keep alives to all connected clients.
 func (m *ClientManager) SendKeepAlives(serverTime float64) {
-	for i := 0; i < m.maxClients; i += 1 {
-		instance := m.instances[i]
+	for _, instance := range m.activeInstances {
 		if !instance.connected {
 			continue
 		}
@@ -414,20 +414,18 @@ func (m *ClientManager) SendKeepAlives(serverTime float64) {
 
 // Checks and disconnects any clients that have timed out.
 func (m *ClientManager) CheckTimeouts(serverTime float64) {
-	for i := 0; i < m.maxClients; i += 1 {
-		instance := m.instances[i]
+	for _, instance := range m.activeInstances {
 		timeout := instance.lastRecvTime + m.timeout
 
 		if instance.connected && (timeout < serverTime || floatEquals(timeout, serverTime)) {
-			log.Printf("server timed out client: %d\n", i)
+			log.Printf("server timed out client: %d\n", instance.clientIndex)
 			m.disconnectClient(instance, false, serverTime)
 		}
 	}
 }
 
 func (m *ClientManager) disconnectClients(serverTime float64) {
-	for clientIndex := 0; clientIndex < m.maxClients; clientIndex += 1 {
-		instance := m.instances[clientIndex]
+	for _, instance := range m.activeInstances {
 		m.disconnectClient(instance, true, serverTime)
 	}
 }
@@ -452,6 +450,7 @@ func (m *ClientManager) disconnectClient(client *ClientInstance, sendDisconnect 
 	m.RemoveEncryptionEntry(client.address, serverTime)
 	m.disconnectCallback(client.clientIndex)
 	client.Clear()
+	delete(m.activeInstances, *client.address)
 }
 
 const EPSILON float64 = 0.000001

@@ -1,3 +1,7 @@
+# go4.org/intern v0.0.0-20210108033219-3eb7198706b2
+go4.org/intern
+# go4.org/unsafe/assume-no-moving-gc v0.0.0-20201222180813-1025295fd063
+go4.org/unsafe/assume-no-moving-gc
 # golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 ## explicit
 golang.org/x/crypto/chacha20
@@ -7,3 +11,6 @@ golang.org/x/crypto/poly1305
 # golang.org/x/sys v0.0.0-20210313202042-bd2e13477e9c
 ## explicit
 golang.org/x/sys/cpu
+# inet.af/netaddr v0.0.0-20210313195008-843b4240e319
+## explicit
+inet.af/netaddr

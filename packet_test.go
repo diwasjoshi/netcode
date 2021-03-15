@@ -2,9 +2,10 @@ package netcode
 
 import (
 	"bytes"
-	"net"
 	"testing"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 func TestSequence(t *testing.T) {
@@ -367,8 +368,9 @@ func TestDisconnectPacket(t *testing.T) {
 }
 
 func testBuildRequestPacket(connectTokenKey []byte, t *testing.T) (*RequestPacket, []byte) {
-	addr := net.UDPAddr{IP: net.ParseIP("::"), Port: TEST_SERVER_PORT}
-	serverAddrs := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("::")
+	addr := netaddr.IPPort{IP: ip, Port: TEST_SERVER_PORT}
+	serverAddrs := make([]netaddr.IPPort, 1)
 	serverAddrs[0] = addr
 
 	connectToken := testGenerateConnectToken(serverAddrs, connectTokenKey, t)

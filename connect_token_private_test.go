@@ -2,15 +2,16 @@ package netcode
 
 import (
 	"bytes"
-	"net"
 	"testing"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 func TestConnectTokenPrivate(t *testing.T) {
-
-	server := net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
-	servers := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("::1")
+	server := netaddr.IPPort{IP: ip, Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 
 	currentTimestamp := uint64(time.Now().Unix())
@@ -96,7 +97,7 @@ func testComparePrivateTokens(token1, token2 *ConnectTokenPrivate, t *testing.T)
 	}
 }
 
-func testCompareAddrs(addr1, addr2 net.UDPAddr, t *testing.T) {
+func testCompareAddrs(addr1, addr2 netaddr.IPPort, t *testing.T) {
 	if addr1.IP.String() != addr2.IP.String() {
 		t.Fatalf("ip addresses were not equal: %s and %s\n", addr1.IP.String(), addr2.IP.String())
 	}

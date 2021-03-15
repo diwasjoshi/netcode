@@ -2,16 +2,18 @@ package netcode
 
 import (
 	"fmt"
-	"net"
 	"testing"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 const testClientCommsEnabled = false // this is for testing servers independently
 
 func TestClientInit(t *testing.T) {
-	server := net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40000}
-	servers := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("127.0.0.1")
+	server := netaddr.IPPort{IP: ip, Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)
@@ -31,8 +33,9 @@ func TestClientCommunications(t *testing.T) {
 	if !testClientCommsEnabled {
 		return
 	}
-	server := net.UDPAddr{IP: net.ParseIP("::1"), Port: 40000}
-	servers := make([]net.UDPAddr, 1)
+	ip, _ := netaddr.ParseIP("::1")
+	server := netaddr.IPPort{IP: ip, Port: 40000}
+	servers := make([]netaddr.IPPort, 1)
 	servers[0] = server
 
 	connectToken := testGenerateConnectToken(servers, TEST_PRIVATE_KEY, t)

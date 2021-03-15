@@ -3,11 +3,13 @@ package netcode
 import (
 	"log"
 	"net"
+
+	"inet.af/netaddr"
 )
 
 type NetcodeData struct {
 	data []byte
-	from *net.UDPAddr
+	from *netaddr.IPPort
 }
 
 const (
@@ -18,9 +20,10 @@ const (
 type NetcodeRecvHandler func(data *NetcodeData)
 
 type NetcodeConn struct {
-	conn     *net.UDPConn
-	closeCh  chan struct{}
-	isClosed bool
+	conn      *net.UDPConn
+	reuseAddr *net.UDPAddr
+	closeCh   chan struct{}
+	isClosed  bool
 
 	recvSize int
 	sendSize int
@@ -37,6 +40,7 @@ func NewNetcodeConn() *NetcodeConn {
 	c.maxBytes = MAX_PACKET_BYTES
 	c.recvSize = SOCKET_RCVBUF_SIZE
 	c.sendSize = SOCKET_SNDBUF_SIZE
+	c.reuseAddr = &net.UDPAddr{}
 	return c
 }
 
@@ -51,11 +55,11 @@ func (c *NetcodeConn) Write(b []byte) (int, error) {
 	return c.conn.Write(b)
 }
 
-func (c *NetcodeConn) WriteTo(b []byte, to *net.UDPAddr) (int, error) {
+func (c *NetcodeConn) WriteTo(b []byte, to *netaddr.IPPort) (int, error) {
 	if c.isClosed {
 		return -1, ErrWriteClosedSocket
 	}
-	return c.conn.WriteTo(b, to)
+	return c.conn.WriteTo(b, to.UDPAddrAt(c.reuseAddr))
 }
 
 func (c *NetcodeConn) Close() error {
@@ -88,7 +92,7 @@ func (c *NetcodeConn) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
 
-func (c *NetcodeConn) Dial(address *net.UDPAddr) error {
+func (c *NetcodeConn) Dial(address *netaddr.IPPort) error {
 	var err error
 
 	if c.recvHandlerFn == nil {
@@ -96,21 +100,21 @@ func (c *NetcodeConn) Dial(address *net.UDPAddr) error {
 	}
 
 	c.closeCh = make(chan struct{})
-	c.conn, err = net.DialUDP(address.Network(), nil, address)
+	c.conn, err = net.DialUDP("udp", nil, address.UDPAddrAt(c.reuseAddr))
 	if err != nil {
 		return err
 	}
 	return c.create()
 }
 
-func (c *NetcodeConn) Listen(address *net.UDPAddr) error {
+func (c *NetcodeConn) Listen(address *netaddr.IPPort) error {
 	var err error
 
 	if c.recvHandlerFn == nil {
 		return ErrPacketHandlerBeforeListen
 	}
 
-	c.conn, err = net.ListenUDP(address.Network(), address)
+	c.conn, err = net.ListenUDP("udp", address.UDPAddrAt(c.reuseAddr))
 	if err != nil {
 		return err
 	}
@@ -176,7 +180,14 @@ func (c *NetcodeConn) read() error {
 	}
 
 	netData.data = netData.data[:n]
-	netData.from = from
+	ip, ok := netaddr.FromStdIP(from.IP)
+	if !ok {
+		return ErrInvalidIPAddress
+	}
+
+	ip = ip.WithZone(from.Zone)
+	netData.from = &netaddr.IPPort{IP: ip, Port: uint16(from.Port)}
+
 	c.recvHandlerFn(netData)
 	return nil
 }

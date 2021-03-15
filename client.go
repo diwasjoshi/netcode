@@ -4,6 +4,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	"inet.af/netaddr"
 )
 
 const CLIENT_MAX_RECEIVE_PACKETS = 64
@@ -60,8 +62,8 @@ type Client struct {
 	clientIndex   uint32
 	maxClients    uint32
 	serverIndex   int
-	address       *net.UDPAddr
-	serverAddress *net.UDPAddr
+	address       *netaddr.IPPort
+	serverAddress *netaddr.IPPort
 
 	challengeData    []byte
 	context          *Context
@@ -344,7 +346,7 @@ func (c *Client) handleNetcodeData(packetData *NetcodeData) {
 	c.packetCh <- packetData
 }
 
-func (c *Client) OnPacketData(packetData []byte, from *net.UDPAddr) {
+func (c *Client) OnPacketData(packetData []byte, from *netaddr.IPPort) {
 	var err error
 	var size int
 	var sequence uint64

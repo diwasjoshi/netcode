@@ -1,8 +1,6 @@
 package netcode
 
-import (
-	"net"
-)
+import "inet.af/netaddr"
 
 // The private parts of a connect token
 type ConnectTokenPrivate struct {
@@ -14,7 +12,7 @@ type ConnectTokenPrivate struct {
 }
 
 // Create a new connect token private with an empty TokenData buffer
-func NewConnectTokenPrivate(clientId uint64, timeoutSeconds int32, serverAddrs []net.UDPAddr, userData []byte) *ConnectTokenPrivate {
+func NewConnectTokenPrivate(clientId uint64, timeoutSeconds int32, serverAddrs []netaddr.IPPort, userData []byte) *ConnectTokenPrivate {
 	p := &ConnectTokenPrivate{}
 	p.TokenData = NewBuffer(CONNECT_TOKEN_PRIVATE_BYTES)
 	p.TimeoutSeconds = timeoutSeconds

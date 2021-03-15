@@ -3,7 +3,8 @@ package netcode
 import (
 	"fmt"
 	"log"
-	"net"
+
+	"inet.af/netaddr"
 )
 
 type ClientInstance struct {
@@ -20,7 +21,7 @@ type ClientInstance struct {
 	userData         []byte
 	protocolId       uint64
 	replayProtection *ReplayProtection
-	address          *net.UDPAddr
+	address          *netaddr.IPPort
 	packetQueue      *PacketQueue
 	packetData       []byte
 }

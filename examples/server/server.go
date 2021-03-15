@@ -7,9 +7,10 @@ import (
 	"fmt"
 
 	"github.com/wirepair/netcode"
+	"inet.af/netaddr"
+
 	//"github.com/pkg/profile"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,7 +27,7 @@ var maxClients int
 //var runProfiler bool
 
 var clientId uint64
-var serverAddrs []net.UDPAddr
+var serverAddrs []netaddr.IPPort
 
 var httpServer *http.Server
 var closeCh chan struct{}
@@ -61,9 +62,10 @@ func main() {
 	signal.Notify(ctrlCloseCh, os.Interrupt)
 
 	// initialize server addresses for connect tokens/listening
-	serverAddrs = make([]net.UDPAddr, numServers)
+	serverAddrs = make([]netaddr.IPPort, numServers)
+	ip, _ := netaddr.ParseIP("::1")
 	for i := 0; i < numServers; i += 1 {
-		addr := net.UDPAddr{IP: net.ParseIP("::1"), Port: startingPort + i}
+		addr := netaddr.IPPort{IP: ip, Port: uint16(startingPort + i)}
 		serverAddrs[i] = addr
 	}
 	/*
@@ -173,7 +175,7 @@ func serveToken(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(webToken)
 }
 
-func connectTokenGenerator(clientId uint64, serverAddrs []net.UDPAddr, versionInfo string, protocolId uint64, tokenExpiry uint64, timeoutSeconds int32, sequence uint64) ([]byte, error) {
+func connectTokenGenerator(clientId uint64, serverAddrs []netaddr.IPPort, versionInfo string, protocolId uint64, tokenExpiry uint64, timeoutSeconds int32, sequence uint64) ([]byte, error) {
 	userData, err := netcode.RandomBytes(netcode.USER_DATA_BYTES)
 	if err != nil {
 		return nil, err
