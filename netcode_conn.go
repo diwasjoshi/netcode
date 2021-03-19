@@ -20,10 +20,9 @@ const (
 type NetcodeRecvHandler func(data *NetcodeData)
 
 type NetcodeConn struct {
-	conn      *net.UDPConn
-	reuseAddr *net.UDPAddr
-	closeCh   chan struct{}
-	isClosed  bool
+	conn     *net.UDPConn
+	closeCh  chan struct{}
+	isClosed bool
 
 	recvSize int
 	sendSize int
@@ -40,7 +39,6 @@ func NewNetcodeConn() *NetcodeConn {
 	c.maxBytes = MAX_PACKET_BYTES
 	c.recvSize = SOCKET_RCVBUF_SIZE
 	c.sendSize = SOCKET_SNDBUF_SIZE
-	c.reuseAddr = &net.UDPAddr{}
 	return c
 }
 
@@ -59,7 +57,7 @@ func (c *NetcodeConn) WriteTo(b []byte, to *netaddr.IPPort) (int, error) {
 	if c.isClosed {
 		return -1, ErrWriteClosedSocket
 	}
-	return c.conn.WriteTo(b, to.UDPAddrAt(c.reuseAddr))
+	return c.conn.WriteTo(b, to.UDPAddr())
 }
 
 func (c *NetcodeConn) Close() error {
@@ -100,7 +98,7 @@ func (c *NetcodeConn) Dial(address *netaddr.IPPort) error {
 	}
 
 	c.closeCh = make(chan struct{})
-	c.conn, err = net.DialUDP("udp", nil, address.UDPAddrAt(c.reuseAddr))
+	c.conn, err = net.DialUDP("udp", nil, address.UDPAddr())
 	if err != nil {
 		return err
 	}
@@ -114,7 +112,7 @@ func (c *NetcodeConn) Listen(address *netaddr.IPPort) error {
 		return ErrPacketHandlerBeforeListen
 	}
 
-	c.conn, err = net.ListenUDP("udp", address.UDPAddrAt(c.reuseAddr))
+	c.conn, err = net.ListenUDP("udp", address.UDPAddr())
 	if err != nil {
 		return err
 	}
