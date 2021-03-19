@@ -89,8 +89,8 @@ func (shared *sharedTokenData) ReadShared(buffer *Buffer) error {
 			return ErrUnknownIPAddress
 		}
 
-		ip, err := netaddr.ParseIP(string(ipBytes))
-		if err != nil {
+		ip, ok := netaddr.FromStdIPRaw(net.IP(ipBytes))
+		if !ok {
 			return ErrUnknownIPAddress
 		}
 

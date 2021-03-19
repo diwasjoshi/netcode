@@ -59,6 +59,10 @@ func (c *ClientInstance) SendPacket(packet Packet, writePacketKey []byte, server
 		return fmt.Errorf("error: unable to write packet: %s", err)
 	}
 
+	if packet.GetType() == ConnectionPayload && !c.connected {
+		return nil
+	}
+
 	if _, err := c.serverConn.WriteTo(c.packetData[:bytesWritten], c.address); err != nil {
 		log.Printf("error writing to client: %s\n", err)
 	}

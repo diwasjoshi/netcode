@@ -449,8 +449,8 @@ func (m *ClientManager) disconnectClient(client *ClientInstance, sendDisconnect 
 	log.Printf("removing encryption entry for: %s", client.address.String())
 	m.RemoveEncryptionEntry(client.address, serverTime)
 	m.disconnectCallback(client.clientIndex)
-	client.Clear()
 	delete(m.activeInstances, *client.address)
+	client.Clear()
 }
 
 const EPSILON float64 = 0.000001

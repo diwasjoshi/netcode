@@ -531,5 +531,5 @@ func addressEqual(addr1, addr2 *netaddr.IPPort) bool {
 	if addr1 == nil || addr2 == nil {
 		return false
 	}
-	return addr1 == addr2
+	return addr1.IP == addr2.IP && addr1.Port == addr2.Port
 }
