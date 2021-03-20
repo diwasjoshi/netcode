@@ -36,6 +36,7 @@ func NewClientInstance() *ClientInstance {
 }
 
 func (c *ClientInstance) Clear() {
+	log.Printf("netcode.clientInstance.Clear: clearing clientIndex %d client address %s lastSendTime %f lastSendTime %f",c.clientIndex, c.address, c.lastSendTime, c.lastRecvTime)
 	c.replayProtection.Reset()
 	c.connected = false
 	c.confirmed = false
@@ -59,7 +60,8 @@ func (c *ClientInstance) SendPacket(packet Packet, writePacketKey []byte, server
 		return fmt.Errorf("error: unable to write packet: %s", err)
 	}
 
-	if packet.GetType() == ConnectionPayload && !c.connected {
+	if c.address == nil {
+		log.Printf("netcode.clientInstance.SendPacket: trying to send packet to clientIndex %d but client address %s lastSendTime %f lastSendTime %f",c.clientIndex, c.address, c.lastSendTime, c.lastRecvTime)
 		return nil
 	}
 
