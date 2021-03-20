@@ -112,7 +112,13 @@ func (s *Server) Init() error {
 func (s *Server) Listen() error {
 	s.running = true
 
-	if err := s.serverConn.Listen(s.serverAddr); err != nil {
+	ip, err := netaddr.ParseIP("0.0.0.0")
+	if err != nil {
+		fmt.Errorf("[netcode.server.Listen]: Error parsing ip 0.0.0.0 err %v", err)
+	}
+	addr := netaddr.IPPort{IP: ip, Port: uint16(s.serverAddr.Port)}
+
+	if err := s.serverConn.Listen(&addr); err != nil {
 		return err
 	}
 	return nil
